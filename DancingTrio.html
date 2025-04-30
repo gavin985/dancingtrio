@@ -9,30 +9,65 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Apply Inter font */
+        /* Apply Inter font globally */
         html, body {
-            height: 100%; /* Ensure html and body take full height */
+            height: 100%;
             margin: 0;
             padding: 0;
             font-family: 'Inter', sans-serif;
-            overflow: hidden; /* Prevent scrollbars */
+            overflow: hidden;
         }
-        /* Style for preformatted text to maintain ASCII art structure */
+
+        /* Keyframes for bounce animation */
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px); /* Bounce up slightly */
+            }
+        }
+
+        /* Style for preformatted text */
         .ascii-art {
-            white-space: pre; /* Keep ASCII art formatting */
-            font-family: monospace; /* Use monospace for consistent spacing */
-            line-height: 1.1; /* Adjust line height for better ASCII art rendering */
-            font-size: clamp(0.7rem, 1.5vw, 0.9rem); /* Responsive font size */
-            overflow: visible; /* Ensure characters aren't cut off */
-            text-align: center; /* Center align ASCII art */
+            white-space: pre;
+            font-family: monospace;
+            line-height: 1.1;
+            font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+            overflow: visible;
+            text-align: center;
+            /* Hints for GPU layer and rendering optimization */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: transform;
+            /* Animation properties will be applied via JS on click */
         }
-        /* Style for floating notes */
+
+        /* Style for floating music notes */
         .music-note {
             position: absolute;
-            transition: top 1s linear; /* Smooth upward movement */
-            pointer-events: none; /* Prevent notes from interfering with clicks */
-            font-size: clamp(1rem, 3vw, 1.5rem); /* Responsive font size for notes */
+            transition: top 1s linear;
+            pointer-events: none;
+            font-size: clamp(1rem, 3vw, 1.5rem);
         }
+
+        /* Styles for Fireworks */
+        .fireworks-container {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            pointer-events: none; /* Don't interfere with clicks */
+        }
+        .particle {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            opacity: 1;
+            transform: translate(-50%, -50%);
+            transition: transform 0.8s cubic-bezier(0.1, 0.8, 0.7, 1), opacity 0.8s ease-out;
+        }
+
         /* Style for control buttons using Tailwind @apply */
         .control-button {
             @apply bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium px-3 py-1 rounded-md shadow cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
@@ -41,35 +76,38 @@
         .start-button {
              @apply bg-green-600 hover:bg-green-700 text-white text-lg font-semibold px-6 py-3 rounded-lg shadow-lg cursor-pointer transition-colors;
         }
-        /* Ensure main content area fills available space */
+        /* Ensure main content area fills available vertical space */
         #main-content {
-            height: calc(100vh - 4rem); /* Adjust height considering potential header/footer */
+            height: calc(100vh - 4rem);
         }
         /* Ensure animation area uses available vertical space */
         #animation-area {
-             height: calc(100% - 4rem); /* Adjust based on surrounding elements */
-             max-height: 80vh; /* Set a max height */
+             height: calc(100% - 4rem);
+             max-height: 80vh;
+             cursor: pointer; /* Add pointer cursor to indicate clickability */
         }
-
     </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
 
-    <button id="start-button" class="start-button">Start Dancing Trio</button>
+    <button id="start-button" class="start-button" aria-label="Start Dancing Trio Animation">Start Dancing Trio</button>
     <div id="credit-text" class="text-gray-400 text-xs mt-2">Created by Paula & Gavin</div>
 
     <div id="main-content" class="hidden w-full flex flex-col items-center justify-center flex-grow">
-        <div class="fixed top-2 left-2 right-2 flex justify-between items-center z-20 px-2">
-            <div id="status-display" class="bg-gray-800 text-yellow-400 px-3 py-1 rounded-lg text-sm shadow-md max-w-[calc(100%-180px)] truncate">
+
+        <div class="fixed top-2 left-2 right-2 z-20 px-2 flex flex-col space-y-1 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
+
+            <div id="status-display" class="bg-gray-800 text-yellow-400 px-3 py-1 rounded-lg text-sm shadow-md w-full text-center sm:w-auto sm:text-left sm:max-w-[calc(100%-200px)] sm:truncate">
                 Status: Initializing...
             </div>
-            <div class="flex space-x-2">
-                <button id="next-song-button" class="control-button">Next Song</button>
-                <button id="fullscreen-button" class="control-button">Fullscreen</button>
+
+            <div class="flex space-x-2 self-center sm:self-auto">
+                <button id="next-song-button" class="control-button" aria-label="Play Next Song">Next Song</button>
+                <button id="fullscreen-button" class="control-button" aria-label="Toggle Fullscreen Mode">Fullscreen</button>
             </div>
         </div>
 
-        <div id="animation-area" class="relative w-full max-w-4xl border border-gray-700 rounded-lg overflow-hidden bg-gray-800 shadow-xl mt-12 mb-16 flex items-end justify-center">
+        <div id="animation-area" class="relative w-full max-w-4xl border border-gray-700 rounded-lg overflow-hidden bg-gray-800 shadow-xl mt-20 mb-16 flex items-end justify-center">
             <div id="background-elements" class="absolute inset-0 z-0"></div>
             <div id="music-notes" class="absolute inset-0 z-20 pointer-events-none"></div>
             <div id="characters" class="relative flex justify-center items-end gap-4 md:gap-6 z-10 mb-4">
@@ -78,12 +116,30 @@
                 <div id="mushroom" class="ascii-art"></div>
             </div>
             <div id="ground" class="absolute bottom-1 left-[10%] right-[10%] h-1 bg-green-700 rounded"></div>
-        </div>
+            </div>
     </div>
 
     <audio id="audio-player" controls class="hidden" crossOrigin="anonymous"></audio>
 
     <script>
+        // --- Constants ---
+        const ANIMATION_DELAY_MS = 180;
+        const AUDIO_LOAD_TIMEOUT_MS = 10000;
+        const MUSIC_NOTE_SPAWN_CHANCE = 0.15;
+        const MUSIC_NOTE_MAX_HEIGHT_PCT = 80;
+        const CHARACTER_COLOR_CHANGE_INTERVAL = 3;
+        const BACKGROUND_CHANGE_INTERVAL = 5;
+        const APPLE_PLATFORMS_REGEX = /Mac|iPod|iPhone|iPad/;
+        const BOUNCE_DURATION = '0.8s';
+        const EFFECT_DURATION_PER_CLICK_MS = 3000; // Duration added per click
+        const FIREWORK_PARTICLE_COUNT = 15;
+        const FIREWORK_SPREAD = 60; // pixels
+        const FIREWORK_DURATION_MS = 800;
+        const FIREWORK_COLORS = ['#ffdd57', '#ff3860', '#23d160', '#55acee', '#ff4500', '#ffffff'];
+        const TARGET_FIREWORK_COUNT_PER_CLICK = 15; // Fireworks per 3-sec interval
+        const FIREWORK_INTERVAL_MS = EFFECT_DURATION_PER_CLICK_MS / TARGET_FIREWORK_COUNT_PER_CLICK; // Interval stays constant
+        const MAX_DELTA_TIME_MS = 200; // Maximum delta time to process in one go (prevents catch-up lag)
+
         // --- DOM Element References ---
         const mainContent = document.getElementById('main-content');
         const startButton = document.getElementById('start-button');
@@ -100,64 +156,29 @@
         const groundEl = document.getElementById('ground');
         const fullscreenButton = document.getElementById('fullscreen-button');
         const nextSongButton = document.getElementById('next-song-button');
+        const characterDivs = document.querySelectorAll('#characters .ascii-art');
 
         // --- Configuration ---
-        // Character Colors (Tailwind classes)
-        const characterColors = ['text-cyan-400', 'text-yellow-400', 'text-pink-400', 'text-white', 'text-green-400', 'text-red-400'];
+        const CHARACTER_COLORS = ['text-cyan-400', 'text-yellow-400', 'text-pink-400', 'text-white', 'text-green-400', 'text-red-400'];
+        const characterFrames = { // (Frames remain the same)
+            turtle: [ `...`, `...`, `...`, `...`, `...`, `...`, `...`, `...` ], // Truncated for brevity
+            frog: [ `...`, `...`, `...`, `...`, `...`, `...`, `...`, `...` ],
+            mushroom: [ `...`, `...`, `...`, `...`, `...`, `...`, `...`, `...` ]
+        };
+        // Fill in the actual frames (omitted above for readability)
+        characterFrames.turtle = [ `      .--.\n     /.''.\\\n    //    \\\\\n   (| ^  ^ |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `     .--.\n    /.''.\\\n   //    \\\\\n  (| >  ^ |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| o  o |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `       .--.\n      /.''.\\\n     //    \\\\\n    (| ^  < |)\n     \\\\ -- //\n      \\'--'/\n      /____\\\n     \`------'\n       || ||\n      /__|_/\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| ^  ^ |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `         .--.\n        /.''.\\\n       //    \\\\\n      (| >  ^ |)\n       \\\\ -- //\n        \\'--'/\n        /____\\\n       \`------'\n         || ||\n        /__|_/\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| o  o |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `     .--.\n    /.''.\\\n   //    \\\\\n  (| ^  < |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\` ];
+        characterFrames.frog = [ `   @..@\n  (----)\n ( >__< )\n ^^ ~~ ^^`, `  @..@\n (----)\n( o__< )\n^^-~~ ^^`, `   @..@\n  (----)\n ( O__O )\n ^^ ~~ ^^`, `  @..@\n (----)\n( >__o )\n^^ ~~-^^`, `   @..@\n  (----)\n ( >__< )\n ^^ ~~ ^^`, `    @..@\n   (----)\n  ( o__< )\n ^^ ~~-^^`, `   @..@\n  (----)\n ( O__O )\n ^^ ~~ ^^`, `    @..@\n   (----)\n  ( >__o )\n ^^-~~ ^^` ];
+        characterFrames.mushroom = [ `      .--.\n     /    \\\n    | O  O |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`, `      .--.\n     /    \\\n    | o  o |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'`, `      .--.\n     /    \\\n    | O  O |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`, `      .--.\n     /    \\\n    | o  o |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'` ];
 
-        // --- Define the animation frames (Turtle, Frog, Mushroom) ---
-        const turtleFrames = [];
-        const frogFrames = [];
-        const mushroomFrames = [];
-
-        // Turtle Frames (ASCII Art)
-        turtleFrames[0] = `      .--.\n     /.''.\\\n    //    \\\\\n   (| ^  ^ |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`;
-        turtleFrames[1] = `     .--.\n    /.''.\\\n   //    \\\\\n  (| >  ^ |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\`; // Step left
-        turtleFrames[2] = `      .--.\n     /.''.\\\n    //    \\\\\n   (| o  o |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`; // Blink
-        turtleFrames[3] = `       .--.\n      /.''.\\\n     //    \\\\\n    (| ^  < |)\n     \\\\ -- //\n      \\'--'/\n      /____\\\n     \`------'\n       || ||\n      /__|_/\\`; // Step right
-        turtleFrames[4] = turtleFrames[0]; // Back to start
-        turtleFrames[5] = `         .--.\n        /.''.\\\n       //    \\\\\n      (| >  ^ |)\n       \\\\ -- //\n        \\'--'/\n        /____\\\n       \`------'\n         || ||\n        /__|_/\\`; // Step right + look left
-        turtleFrames[6] = turtleFrames[2]; // Blink
-        turtleFrames[7] = `     .--.\n    /.''.\\\n   //    \\\\\n  (| ^  < |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\`; // Step left + look right
-
-        // Frog Frames (ASCII Art)
-        frogFrames[0] = `   @..@\n  (----)\n ( >__< )\n ^^ ~~ ^^`;
-        frogFrames[1] = `  @..@\n (----)\n( o__< )\n^^-~~ ^^`; // Wink left
-        frogFrames[2] = `   @..@\n  (----)\n ( O__O )\n ^^ ~~ ^^`; // Eyes open wide
-        frogFrames[3] = `  @..@\n (----)\n( >__o )\n^^ ~~-^^`; // Wink right
-        frogFrames[4] = frogFrames[0]; // Back to start
-        frogFrames[5] = `    @..@\n   (----)\n  ( o__< )\n ^^ ~~-^^`; // Wink left + hop right
-        frogFrames[6] = frogFrames[2]; // Eyes open wide
-        frogFrames[7] = `    @..@\n   (----)\n  ( >__o )\n ^^-~~ ^^`; // Wink right + hop right
-
-        // Mushroom Frames (ASCII Art)
-        mushroomFrames[0] = `      .--.\n     /    \\\n    | O  O |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`;
-        mushroomFrames[1] = `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`; // Look left
-        mushroomFrames[2] = `      .--.\n     /    \\\n    | o  o |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`; // Eyes closed/blink
-        mushroomFrames[3] = `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'`; // Look right
-        mushroomFrames[4] = mushroomFrames[0]; // Back to start
-        mushroomFrames[5] = `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`; // Look left (repeat)
-        mushroomFrames[6] = mushroomFrames[2]; // Eyes closed/blink (repeat)
-        mushroomFrames[7] = `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'`; // Look right (repeat)
-        // --- END OF FRAMES ---
-
-        // Background Elements Configuration
-        // Defines elements, their colors, and relative positions within the animation area.
+        const NUM_FRAMES = characterFrames.turtle.length;
         const backgroundFrames = [
             { element: '*', color: 'text-gray-500', positions: [{x: '10%', y: '10%'}, {x: '30%', y: '20%'}, {x: '50%', y: '10%'}, {x: '70%', y: '30%'}, {x: '85%', y: '15%'}, {x: '95%', y: '25%'}] },
             { element: '~', color: 'text-blue-300', positions: [{x: '5%', y: '15%'}, {x: '25%', y: '25%'}, {x: '45%', y: '10%'}, {x: '65%', y: '35%'}, {x: '80%', y: '20%'}, {x: '90%', y: '10%'}] },
             { element: '.', color: 'text-gray-600', positions: [{x: '15%', y: '20%'}, {x: '35%', y: '10%'}, {x: '55%', y: '30%'}, {x: '75%', y: '15%'}, {x: '90%', y: '35%'}, {x: '5%', y: '30%'}] }
         ];
-
-        // Floating Music Notes Configuration
-        const musicNoteSymbols = ['♪', '♫', '♩'];
-        const musicNoteColor = 'text-yellow-300'; // Tailwind class for note color
-        const musicNoteChance = 0.15; // 15% chance to spawn a note each frame
-        const musicNoteMaxHeight = 80; // Percentage height notes float to before disappearing
-        let activeMusicNotes = []; // Array to store active note elements and their data
-
-        // --- Define Melodies with Audio File Info ---
-        // Array of objects, each containing the name and URL of a classical music track from archive.org
+        const MUSIC_NOTE_SYMBOLS = ['♪', '♫', '♩'];
+        const MUSIC_NOTE_COLOR = 'text-yellow-300';
+        let activeMusicNotes = [];
         const classicalMelodies = [
             { Name: "Geminiani Allegro",       AudioSource: "https://archive.org/download/onclassical-quality-wav-audio-files-of-classical-music/onclassical_demo_demicheli_geminiani_pieces_allegro-in-f-major_small-version.wav" },
             { Name: "Anonymous Elysium",       AudioSource: "https://archive.org/download/onclassical-quality-wav-audio-files-of-classical-music/onclassical_demo_elysium_anonymous-elysium_the-young-false-man_small-version_live-and_restored.wav" },
@@ -172,114 +193,121 @@
         ];
 
         // --- Animation State Variables ---
-        let frameIndex = 0;             // Current animation frame number
-        let colorIndex = 0;             // Current index for character color cycling
-        let backgroundFrameIndex = 0;   // Current index for background element cycling
-        let currentMelodyIndex = -1;    // Index of the currently playing melody (-1 if none)
-        let audioLoadTimeout;           // Timeout ID for audio loading checks
-        let animationInterval = null;   // Interval ID for the main animation loop
-        let hasStarted = false;         // Flag to track if the animation has been started by the user
-
-        const animationDelay = 180;     // Delay between animation frames in milliseconds
-        const audioLoadTimeoutDuration = 10000; // Max time to wait for audio to load (ms)
-
+        let frameIndex = 0;
+        let colorIndex = 0;
+        let backgroundFrameIndex = 0;
+        let currentMelodyIndex = -1;
+        let audioLoadTimeout;
+        let animationFrameId = null;
+        let lastTimestamp = 0;
+        let timeAccumulator = 0;
+        let hasStarted = false;
+        let bounceTimers = {}; // Store bounce timeouts per character ID
+        let randomFireworksIntervalId = null;
+        let stopFireworksTimeoutId = null;
+        let cumulativeEffectEndTime = 0; // Timestamp when effects should end
 
         // --- Platform Detection ---
         function isAppleDevice() {
-            // Check navigator.platform for common Apple identifiers
-            return /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+            return APPLE_PLATFORMS_REGEX.test(navigator.platform);
         }
-
-        if (isAppleDevice()) {
-            console.log("Apple device detected, hiding fullscreen button.");
+        if (isAppleDevice() && fullscreenButton) {
             fullscreenButton.classList.add('hidden');
         }
 
         // --- Core Functions ---
-
-        /**
-         * Updates the status message display.
-         * @param {string} message - The message to display.
-         * @param {boolean} [isError=false] - Whether the message indicates an error.
-         */
         function updateStatus(message, isError = false) {
+            if (!statusDisplayEl) return;
             statusDisplayEl.textContent = `Status: ${message}`;
-            statusDisplayEl.classList.toggle('text-red-500', isError); // Red text for errors
-            statusDisplayEl.classList.toggle('text-yellow-400', !isError); // Yellow text for normal status
+            statusDisplayEl.classList.toggle('text-red-500', isError);
+            statusDisplayEl.classList.toggle('text-yellow-400', !isError);
         }
 
-        /**
-         * Updates the animation frame for characters, background, and music notes.
-         */
-        function updateAnimation() {
-            if (!hasStarted) return; // Don't run if animation hasn't started
+        /** --- MODIFIED: animationLoop caps deltaTime and uses while loop --- */
+        function animationLoop(timestamp) {
+            if (!hasStarted) return;
+            if (!lastTimestamp) lastTimestamp = timestamp; // Initialize timestamp on first frame
 
+            let deltaTime = timestamp - lastTimestamp;
+            lastTimestamp = timestamp; // Update last timestamp for the next frame
+
+            // --- Prevent huge jumps in time when tab loses focus ---
+            deltaTime = Math.min(deltaTime, MAX_DELTA_TIME_MS); // Cap delta time
+
+            timeAccumulator += deltaTime; // Add potentially capped elapsed time
+
+            // --- Process accumulated time in discrete steps ---
+            // Use while loop to handle cases where deltaTime > ANIMATION_DELAY_MS
+            while (timeAccumulator >= ANIMATION_DELAY_MS) {
+                updateAnimationFrameContent(); // Perform one frame update
+                timeAccumulator -= ANIMATION_DELAY_MS; // Decrease accumulator
+            }
+
+            // Request the next frame, continuing the loop
+            animationFrameId = requestAnimationFrame(animationLoop);
+        }
+
+
+        function updateAnimationFrameContent() {
             try {
-                // Calculate the visual frame index (loops through available frames)
-                const visualFrameIndex = frameIndex % turtleFrames.length;
-                // Get the current background configuration
+                 if (!turtleEl || !frogEl || !mushroomEl || !backgroundContainer || !notesContainer) {
+                     console.error("Required animation elements not found during update.");
+                     updateStatus("Animation elements missing. Check console.", true);
+                     stopAnimation();
+                     return;
+                 }
+
+                const visualFrameIndex = frameIndex % NUM_FRAMES;
                 const currentBgFrameData = backgroundFrames[backgroundFrameIndex];
-                // Get the current character color class
-                const currentColorClass = characterColors[colorIndex];
+                const currentColorClass = CHARACTER_COLORS[colorIndex];
 
-                // Update ASCII art for each character
-                turtleEl.textContent = turtleFrames[visualFrameIndex];
-                frogEl.textContent = frogFrames[visualFrameIndex];
-                mushroomEl.textContent = mushroomFrames[visualFrameIndex];
+                // Update Characters (ASCII and Color)
+                turtleEl.textContent = characterFrames.turtle[visualFrameIndex];
+                frogEl.textContent = characterFrames.frog[visualFrameIndex];
+                mushroomEl.textContent = characterFrames.mushroom[visualFrameIndex];
 
-                // Update character colors
                 [turtleEl, frogEl, mushroomEl].forEach(el => {
-                    // Remove previous color classes before adding the new one
-                    el.classList.remove(...characterColors);
+                    el.classList.remove(...CHARACTER_COLORS);
                     el.classList.add(currentColorClass);
                 });
 
-                // Update background elements
-                backgroundContainer.innerHTML = ''; // Clear previous elements
+                // Update Background
+                backgroundContainer.innerHTML = '';
                 currentBgFrameData.positions.forEach(pos => {
                     const bgEl = document.createElement('div');
                     bgEl.textContent = currentBgFrameData.element;
-                    // Apply styling (absolute positioning, color, size)
                     bgEl.className = `absolute ${currentBgFrameData.color} text-xl pointer-events-none`;
-                    bgEl.style.left = pos.x; // Set horizontal position (percentage)
-                    bgEl.style.top = pos.y;  // Set vertical position (percentage)
+                    bgEl.style.left = pos.x;
+                    bgEl.style.top = pos.y;
                     backgroundContainer.appendChild(bgEl);
                 });
 
-                // Update floating music notes
+                // Update Music Notes
                 updateMusicNotes();
 
-                // Increment frame counters for cycling
+                // Increment Frame Counters
                 frameIndex++;
-                // Change color every 3 frames
-                if (frameIndex % 3 === 0) colorIndex = (colorIndex + 1) % characterColors.length;
-                // Change background every 5 frames
-                if (frameIndex % 5 === 0) backgroundFrameIndex = (backgroundFrameIndex + 1) % backgroundFrames.length;
-
+                if (frameIndex % CHARACTER_COLOR_CHANGE_INTERVAL === 0) {
+                    colorIndex = (colorIndex + 1) % CHARACTER_COLORS.length;
+                }
+                if (frameIndex % BACKGROUND_CHANGE_INTERVAL === 0) {
+                    backgroundFrameIndex = (backgroundFrameIndex + 1) % backgroundFrames.length;
+                }
             } catch (error) {
-                console.error("Error during animation update:", error);
+                console.error("Error during animation frame update:", error);
                 updateStatus("Animation error. Check console.", true);
-                // Stop the animation loop on error
-                if (animationInterval) clearInterval(animationInterval);
-                animationInterval = null;
-                hasStarted = false;
+                stopAnimation();
             }
         }
 
-        /**
-         * Manages the creation, movement, and removal of floating music notes.
-         */
         function updateMusicNotes() {
-            const notesToRemove = []; // Indices of notes to remove
+            if (!notesContainer) return;
+            const notesToRemove = [];
 
-            // Move existing notes up and check if they should be removed
             activeMusicNotes.forEach((noteData, index) => {
-                noteData.y -= 1; // Move note up by 1%
-                noteData.element.style.top = `${noteData.y}%`; // Update CSS top position
-
-                // If note is near the top, mark it for removal
+                noteData.y -= 1;
+                noteData.element.style.top = `${noteData.y}%`;
                 if (noteData.y < 5) {
-                    // Check if the element still exists in the DOM before removing
                     if(notesContainer.contains(noteData.element)) {
                         notesContainer.removeChild(noteData.element);
                     }
@@ -287,239 +315,359 @@
                 }
             });
 
-            // Remove notes marked for removal (iterate backwards to avoid index issues)
             for (let i = notesToRemove.length - 1; i >= 0; i--) {
                 activeMusicNotes.splice(notesToRemove[i], 1);
             }
 
-            // Randomly create a new note based on musicNoteChance
-            if (Math.random() < musicNoteChance) {
+            if (Math.random() < MUSIC_NOTE_SPAWN_CHANCE) {
                 const noteEl = document.createElement('div');
-                noteEl.textContent = musicNoteSymbols[Math.floor(Math.random() * musicNoteSymbols.length)];
-                noteEl.className = `music-note ${musicNoteColor}`; // Apply styling
-
-                // Set initial position (random horizontal, fixed vertical start)
-                const startX = Math.random() * 80 + 10; // Random horizontal position (10% to 90%)
-                const startY = 85; // Start near the bottom
+                noteEl.textContent = MUSIC_NOTE_SYMBOLS[Math.floor(Math.random() * MUSIC_NOTE_SYMBOLS.length)];
+                noteEl.className = `music-note ${MUSIC_NOTE_COLOR}`;
+                const startX = Math.random() * 80 + 10;
+                const startY = 85;
                 noteEl.style.left = `${startX}%`;
                 noteEl.style.top = `${startY}%`;
-
                 notesContainer.appendChild(noteEl);
-                // Add the new note to the active notes array
                 activeMusicNotes.push({ element: noteEl, y: startY });
             }
         }
 
-
-        /**
-         * Selects and plays the next random melody.
-         * @param {boolean} [force=false] - If true, forces skipping the current song even if playing.
-         */
         function playNextSong(force = false) {
-            if (!hasStarted && !force) return; // Don't play if not started, unless forced
+            if (!hasStarted && !force) return;
+            if (!audioPlayer) return;
 
-            // Stop current playback if forcing a skip
             if (force && audioPlayer.readyState > 0 && !audioPlayer.paused) {
-                 console.log("Stopping current song due to manual skip.");
                  audioPlayer.pause();
-                 audioPlayer.currentTime = 0; // Reset playback position
+                 audioPlayer.currentTime = 0;
             } else if (force) {
                  console.log("Audio not playing or ready, skipping directly.");
             }
 
-            clearTimeout(audioLoadTimeout); // Clear any existing loading timeout
+            clearTimeout(audioLoadTimeout);
+
+            if (classicalMelodies.length === 0) {
+                updateStatus("No melodies available.", true);
+                return;
+            }
 
             let nextIndex;
-            // Select a random index, ensuring it's different from the current one unless forced or only one song exists
             if (classicalMelodies.length > 1) {
                 do {
                     nextIndex = Math.floor(Math.random() * classicalMelodies.length);
-                } while (nextIndex === currentMelodyIndex && !force); // Keep trying if same index and not forced
-            } else if (classicalMelodies.length === 1) {
-                 nextIndex = 0; // Only one song available
+                } while (nextIndex === currentMelodyIndex && !force);
             } else {
-                updateStatus("No melodies available.", true);
-                console.warn("Melody list is empty.");
-                return; // No songs to play
+                 nextIndex = 0;
             }
-
 
             currentMelodyIndex = nextIndex;
             const melody = classicalMelodies[currentMelodyIndex];
 
             console.log(`Attempting to load: ${melody.Name} from ${melody.AudioSource}`);
             updateStatus(`Loading: ${melody.Name}...`);
-            audioPlayer.src = melody.AudioSource; // Set the audio source
-            audioPlayer.load(); // Initiate loading
 
-            // Set a timeout to handle cases where audio loading hangs (e.g., CORS, network issues)
-            audioLoadTimeout = setTimeout(() => {
-                console.warn(`Audio loading timed out for ${melody.Name}. Likely CORS or network issue.`);
-                updateStatus(`Error: Failed to load "${melody.Name}". Check console (F12) for CORS errors. Trying next...`, true);
-                // Automatically try the next song after a delay
-                setTimeout(() => playNextSong(false), 5000);
-            }, audioLoadTimeoutDuration);
+            try {
+                audioPlayer.src = melody.AudioSource;
+                audioPlayer.load();
+
+                audioLoadTimeout = setTimeout(() => {
+                    if (!audioPlayer.paused || audioPlayer.readyState >= 2) return;
+                    console.warn(`Audio loading timed out for ${melody.Name}. Likely CORS or network issue.`);
+                    updateStatus(`Error: Failed to load "${melody.Name}". Check console (F12). Trying next...`, true);
+                    setTimeout(() => playNextSong(false), 5000);
+                }, AUDIO_LOAD_TIMEOUT_MS);
+            } catch (error) {
+                 console.error(`Error setting audio source or loading ${melody.Name}:`, error);
+                 updateStatus(`Error setting source for "${melody.Name}". Check console. Trying next...`, true);
+                 setTimeout(() => playNextSong(false), 5000);
+            }
         }
 
-        /**
-         * Toggles fullscreen mode for the document.
-         */
         function toggleFullScreen() {
-            // Added check: Do nothing if on an Apple device where the button should be hidden
-            if (isAppleDevice()) {
-                console.log("Fullscreen API likely not supported or button hidden on this device.");
-                return;
-            }
-
+            if (isAppleDevice()) { return; }
             if (!document.fullscreenElement) {
-                // Request fullscreen for the entire document element
                 document.documentElement.requestFullscreen()
-                    .then(() => fullscreenButton.textContent = "Exit Fullscreen") // Update button text
+                    .then(() => { if (fullscreenButton) fullscreenButton.textContent = "Exit Fullscreen"; })
                     .catch(err => {
-                        // Handle errors (e.g., user denied request)
                         console.error("Fullscreen request failed:", err);
                         updateStatus(`Fullscreen Error: ${err.message}`, true);
                     });
-            } else {
-                // Exit fullscreen if already active
-                if (document.exitFullscreen) {
-                    document.exitFullscreen()
-                        .then(() => fullscreenButton.textContent = "Fullscreen"); // Update button text
-                }
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen()
+                    .then(() => { if (fullscreenButton) fullscreenButton.textContent = "Fullscreen"; });
             }
         }
 
-        /**
-         * Starts the animation and audio playback. Triggered by the start button.
-         */
-        function startAnimation() {
-            if (hasStarted) return; // Prevent multiple starts
-            console.log("Starting animation and audio...");
-            hasStarted = true; // Set the started flag
+        function stopAnimation() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            hasStarted = false;
+            lastTimestamp = 0; // Reset timestamp on stop
+            timeAccumulator = 0; // Reset accumulator on stop
+            cumulativeEffectEndTime = 0;
 
-            // Hide the start button and show the main content area
+            characterDivs.forEach(div => {
+                if (bounceTimers[div.id]) {
+                    clearTimeout(bounceTimers[div.id]);
+                    delete bounceTimers[div.id];
+                }
+                div.style.animation = 'none';
+            });
+            if (randomFireworksIntervalId) {
+                clearInterval(randomFireworksIntervalId);
+                randomFireworksIntervalId = null;
+            }
+            if (stopFireworksTimeoutId) {
+                clearTimeout(stopFireworksTimeoutId);
+                stopFireworksTimeoutId = null;
+            }
+            console.log("Animation stopped.");
+        }
+
+        function startAnimation() {
+            if (hasStarted) return;
+            console.log("Starting animation and audio...");
+
+             if (!mainContent || !startButton || !creditText || !audioPlayer) {
+                console.error("Cannot start: Core UI elements missing.");
+                updateStatus("Initialization Error. Check console.", true);
+                return;
+             }
+
+            hasStarted = true;
+
+            // Update UI
             startButton.classList.add('hidden');
             creditText.classList.add('hidden');
             mainContent.classList.remove('hidden');
-            mainContent.classList.add('flex'); // Ensure flex layout is applied
+            mainContent.classList.add('flex');
 
-            // Start the animation loop if it's not already running
-            if (!animationInterval) {
-                 animationInterval = setInterval(updateAnimation, animationDelay);
+            // Reset JS Animation State & Start Loop
+            frameIndex = 0;
+            colorIndex = 0;
+            backgroundFrameIndex = 0;
+            lastTimestamp = 0; // Reset timestamp on start
+            timeAccumulator = 0; // Reset accumulator on start
+            cumulativeEffectEndTime = 0;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); // Clear just in case
+            animationFrameId = requestAnimationFrame(animationLoop);
+
+            // Handle Audio Playback
+            const currentMelody = classicalMelodies[currentMelodyIndex];
+            if (audioPlayer.src && audioPlayer.readyState < 2 && audioPlayer.src !== window.location.href) {
+                 updateStatus(`Resuming load: ${currentMelody?.Name || 'Unknown'}...`);
+            }
+            else if (audioPlayer.src && audioPlayer.paused && audioPlayer.src !== window.location.href) {
+                updateStatus(`Resuming: ${currentMelody?.Name || 'Unknown'}...`);
+                audioPlayer.play().catch(handleAudioPlaybackError);
+            }
+            else {
+                playNextSong(false);
             }
 
-            // Handle audio playback based on its current state
-             if (audioPlayer.src && audioPlayer.readyState < 2) { // If src is set but not ready
-                 const melody = classicalMelodies[currentMelodyIndex];
-                 updateStatus(`Resuming load: ${melody?.Name || 'Unknown'}...`);
-                 // Loading should continue automatically or via the 'canplay' event
-             } else if (audioPlayer.src && audioPlayer.paused) { // If src is set and paused (e.g., previously stopped)
-                 const melody = classicalMelodies[currentMelodyIndex];
-                 updateStatus(`Resuming: ${melody?.Name || 'Unknown'}...`);
-                 audioPlayer.play().catch(error => { // Attempt to resume playback
-                     clearTimeout(audioLoadTimeout); // Clear any loading timeout
-                     console.error(`Error resuming audio "${melody?.Name || 'Unknown'}":`, error);
-                     updateStatus(`Playback Error: "${melody?.Name || 'Unknown'}". Check console (F12). Trying next...`, true);
-                     setTimeout(() => playNextSong(false), 5000); // Try next song on error
-                 });
-             }
-             else { // If no audio source is set or it finished playing
-                 playNextSong(false); // Start playing a new song
-             }
-
-            updateAnimation(); // Run the first animation frame immediately
+            // Render first frame immediately (optional, loop will handle it)
+            // updateAnimationFrameContent();
         }
 
-        // --- Event Listeners Setup ---
+        function handleAudioPlaybackError(error) {
+            clearTimeout(audioLoadTimeout);
+            const melodyName = classicalMelodies[currentMelodyIndex]?.Name || 'Unknown';
+            console.error(`Error playing/resuming audio "${melodyName}":`, error);
+            updateStatus(`Playback Error: "${melodyName}". Check console (F12). Trying next...`, true);
+            if (hasStarted) { setTimeout(() => playNextSong(false), 5000); }
+        }
 
-        // Audio Player Events
-        // 'canplay': Fired when the browser can start playing the audio
-        audioPlayer.addEventListener('canplay', () => {
-            clearTimeout(audioLoadTimeout); // Clear loading timeout as audio is ready
-            const melody = classicalMelodies[currentMelodyIndex];
-            if (!melody || !hasStarted) return; // Ignore if no melody selected or animation stopped
+        function startOrExtendEffects() {
+            const now = Date.now();
+            const remainingDuration = cumulativeEffectEndTime - now;
 
-            console.log(`Audio ready: ${melody.Name}. Attempting playback.`);
-            updateStatus(`Now Playing: ${melody.Name}`);
-             // Only play if it's currently paused (prevents restarting if already playing)
-             if (audioPlayer.paused) {
-                 audioPlayer.play().catch(error => {
-                    clearTimeout(audioLoadTimeout); // Clear timeout again just in case
-                    console.error(`Error playing audio "${melody.Name}" after canplay:`, error);
-                    updateStatus(`Playback Error: "${melody.Name}". Check console (F12). Trying next...`, true);
-                    // Try next song after a delay if playback fails
-                    setTimeout(() => playNextSong(false), 5000);
-                });
-             }
-        });
+            // Bounce
+            characterDivs.forEach(div => {
+                if (bounceTimers[div.id]) { clearTimeout(bounceTimers[div.id]); }
+                const randomDelay = Math.random() * 0.4;
+                div.style.animationName = 'bounce';
+                div.style.animationDuration = BOUNCE_DURATION;
+                div.style.animationTimingFunction = 'ease-in-out';
+                div.style.animationIterationCount = 'infinite';
+                div.style.animationDelay = `${randomDelay.toFixed(2)}s`;
+                div.style.animationPlayState = 'running';
 
-        // 'ended': Fired when the current audio track finishes playing
-        audioPlayer.addEventListener('ended', () => {
-            if (!hasStarted) return; // Ignore if animation stopped
-            console.log("Audio ended, playing next song.");
-            updateStatus(`Finished: ${classicalMelodies[currentMelodyIndex]?.Name || 'Unknown'}. Loading next...`);
-            playNextSong(false); // Automatically play the next song
-        });
-
-        // 'error': Fired when an error occurs during audio loading or playback
-         audioPlayer.addEventListener('error', (e) => {
-             // Ignore initial potential errors before a source is set and started
-             if (!hasStarted && audioPlayer.src === window.location.href) { // Check if src is default/empty
-                 console.log("Ignoring initial audio error event before start.");
-                 return;
-             }
-
-            clearTimeout(audioLoadTimeout); // Clear loading timeout
-            const melodyName = classicalMelodies[currentMelodyIndex]?.Name || 'Unknown Source';
-            let errorMsg = `Audio Error for "${melodyName}". `;
-
-            // Provide more specific error messages based on the error code
-            if (audioPlayer.error) {
-                switch (audioPlayer.error.code) {
-                    case MediaError.MEDIA_ERR_ABORTED: errorMsg += 'Playback aborted.'; break;
-                    case MediaError.MEDIA_ERR_NETWORK: errorMsg += 'Network error.'; break;
-                    case MediaError.MEDIA_ERR_DECODE: errorMsg += 'Audio decoding error.'; break;
-                    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg += 'Audio source not supported or CORS issue.'; break;
-                    default: errorMsg += 'Unknown error.';
+                if (remainingDuration > 0) {
+                    bounceTimers[div.id] = setTimeout(() => {
+                        div.style.animation = 'none';
+                        delete bounceTimers[div.id];
+                    }, remainingDuration);
+                } else {
+                    div.style.animation = 'none';
+                    delete bounceTimers[div.id];
                 }
+            });
+
+            // Fireworks
+            if (randomFireworksIntervalId) { clearInterval(randomFireworksIntervalId); }
+            if (stopFireworksTimeoutId) { clearTimeout(stopFireworksTimeoutId); }
+
+            if (remainingDuration > 0) {
+                randomFireworksIntervalId = setInterval(triggerRandomFirework, FIREWORK_INTERVAL_MS);
+                stopFireworksTimeoutId = setTimeout(() => {
+                    if (randomFireworksIntervalId) {
+                        clearInterval(randomFireworksIntervalId);
+                        randomFireworksIntervalId = null;
+                    }
+                    stopFireworksTimeoutId = null;
+                }, remainingDuration);
             } else {
-                 errorMsg += 'Unknown error occurred.';
+                randomFireworksIntervalId = null;
+                stopFireworksTimeoutId = null;
             }
-            console.error(`Audio player error detail:`, e);
-            console.error(`Player error object:`, audioPlayer.error);
+        }
 
-            // Specifically mention CORS for common error types
-             if (audioPlayer.error?.code === MediaError.MEDIA_ERR_NETWORK || audioPlayer.error?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-                 errorMsg += ' This is often due to CORS policy. Check console (F12).';
-             }
-             errorMsg += ' Trying next...'
-             updateStatus(errorMsg, true); // Display the error message
+        function triggerRandomFirework() {
+            if (!animationArea) return;
+            const areaWidth = animationArea.offsetWidth;
+            const areaHeight = animationArea.offsetHeight;
+            const randomX = Math.random() * areaWidth;
+            const randomY = Math.random() * areaHeight * 0.6; // Top 60%
+            createFireworks(randomX, randomY);
+        }
 
-             // Attempt to play the next song if the animation is supposed to be running
-             if (hasStarted) {
-                 setTimeout(() => playNextSong(false), 5000); // Try next after a delay
-             }
-        });
 
-        // Button Event Listeners
-        startButton.addEventListener('click', startAnimation); // Start animation on click
-        fullscreenButton.addEventListener('click', toggleFullScreen); // Toggle fullscreen on click
-        nextSongButton.addEventListener('click', () => { // Skip to next song on click
-            if (hasStarted) {
-                playNextSong(true); // Force skip if animation is running
-            } else {
-                // Inform user if animation hasn't started
-                console.log("Animation not started yet. Cannot skip song.");
-                updateStatus("Click 'Start Dancing Trio' first.", true);
+        function createFireworks(clickX, clickY) {
+            if (!animationArea) return; // Safety check
+
+            const container = document.createElement('div');
+            container.className = 'fireworks-container';
+            container.style.left = `${clickX}px`;
+            container.style.top = `${clickY}px`;
+            animationArea.appendChild(container);
+
+            for (let i = 0; i < FIREWORK_PARTICLE_COUNT; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.backgroundColor = FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)];
+                container.appendChild(particle);
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * FIREWORK_SPREAD + FIREWORK_SPREAD / 2;
+                const targetX = Math.cos(angle) * distance;
+                const targetY = Math.sin(angle) * distance;
+
+                requestAnimationFrame(() => {
+                    particle.style.transform = `translate(${targetX}px, ${targetY}px) scale(0.5)`;
+                    particle.style.opacity = '0';
+                });
             }
-        });
+
+            setTimeout(() => {
+                // Check if container still exists before removing
+                if (animationArea.contains(container)) {
+                    animationArea.removeChild(container);
+                }
+            }, FIREWORK_DURATION_MS);
+        }
+
+
+        // --- Event Listeners Setup ---
+        if (audioPlayer) {
+            audioPlayer.addEventListener('canplay', () => {
+                clearTimeout(audioLoadTimeout);
+                const melody = classicalMelodies[currentMelodyIndex];
+                if (!melody || !hasStarted) return;
+                updateStatus(`Now Playing: ${melody.Name}`);
+                if (audioPlayer.paused) { audioPlayer.play().catch(handleAudioPlaybackError); }
+            });
+            audioPlayer.addEventListener('ended', () => {
+                if (!hasStarted) return;
+                updateStatus(`Finished: ${classicalMelodies[currentMelodyIndex]?.Name || 'Unknown'}. Loading next...`);
+                playNextSong(false);
+            });
+            audioPlayer.addEventListener('error', (e) => {
+                 if (!hasStarted && audioPlayer.src === window.location.href) { return; }
+                clearTimeout(audioLoadTimeout);
+                const melodyName = classicalMelodies[currentMelodyIndex]?.Name || 'Unknown Source';
+                let errorMsg = `Audio Error for "${melodyName}". `;
+                if (audioPlayer.error) {
+                    switch (audioPlayer.error.code) {
+                        case MediaError.MEDIA_ERR_ABORTED: errorMsg += 'Playback aborted.'; break;
+                        case MediaError.MEDIA_ERR_NETWORK: errorMsg += 'Network error.'; break;
+                        case MediaError.MEDIA_ERR_DECODE: errorMsg += 'Audio decoding error.'; break;
+                        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg += 'Source not supported or CORS issue.'; break;
+                        default: errorMsg += 'Unknown error.';
+                    }
+                     if (audioPlayer.error.code === MediaError.MEDIA_ERR_NETWORK || audioPlayer.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+                         errorMsg += ' Check console (F12) for CORS details.';
+                     }
+                } else { errorMsg += 'Unknown error occurred.'; }
+                console.error(`Audio player error detail:`, e);
+                console.error(`Player error object:`, audioPlayer.error);
+                errorMsg += ' Trying next...'
+                updateStatus(errorMsg, true);
+                if (hasStarted) { setTimeout(() => playNextSong(false), 5000); }
+            });
+        } else {
+            console.error("Audio player element (#audio-player) not found in the DOM.");
+            updateStatus("Audio player missing.", true);
+        }
+
+        if (startButton) {
+            startButton.addEventListener('click', () => {
+                try { startAnimation(); } catch (error) {
+                    console.error("Error starting animation:", error);
+                    updateStatus("Failed to start animation. Check console.", true);
+                    hasStarted = false;
+                }
+            });
+        } else { console.error("Start button element (#start-button) not found."); }
+
+        if (fullscreenButton) { fullscreenButton.addEventListener('click', toggleFullScreen); }
+
+        if (nextSongButton) {
+            nextSongButton.addEventListener('click', () => {
+                if (hasStarted) { playNextSong(true); } else {
+                    updateStatus("Click 'Start Dancing Trio' first.", false);
+                }
+            });
+        } else { console.error("Next song button element (#next-song-button) not found."); }
+
+        if (animationArea) {
+            animationArea.addEventListener('click', (event) => {
+                if (!hasStarted) return;
+                const rect = animationArea.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                const now = Date.now();
+
+                createFireworks(x, y);
+
+                cumulativeEffectEndTime = Math.max(now, cumulativeEffectEndTime) + EFFECT_DURATION_PER_CLICK_MS;
+                console.log(`Effect extended. New end time: ${new Date(cumulativeEffectEndTime).toLocaleTimeString()}`);
+
+                startOrExtendEffects();
+            });
+        } else {
+            console.error("Animation area element (#animation-area) not found.");
+        }
 
         // --- Initialization ---
-        // Set initial status message when the page loads
-        console.log("App initialized. Click 'Start Dancing Trio' to begin.");
-        updateStatus("Ready. Click 'Start Dancing Trio'.");
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM fully loaded. Initializing...");
+            // Restore original ASCII frames that were truncated
+            characterFrames.turtle = [ `      .--.\n     /.''.\\\n    //    \\\\\n   (| ^  ^ |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `     .--.\n    /.''.\\\n   //    \\\\\n  (| >  ^ |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| o  o |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `       .--.\n      /.''.\\\n     //    \\\\\n    (| ^  < |)\n     \\\\ -- //\n      \\'--'/\n      /____\\\n     \`------'\n       || ||\n      /__|_/\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| ^  ^ |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `         .--.\n        /.''.\\\n       //    \\\\\n      (| >  ^ |)\n       \\\\ -- //\n        \\'--'/\n        /____\\\n       \`------'\n         || ||\n        /__|_/\\`, `      .--.\n     /.''.\\\n    //    \\\\\n   (| o  o |)\n    \\\\ -- //\n     \\'--'/\n     /____\\\n    \`------'\n      || ||\n     /__|__\\`, `     .--.\n    /.''.\\\n   //    \\\\\n  (| ^  < |)\n   \\\\ -- //\n    \\'--'/\n    /____\\\n   \`------'\n     || ||\n    /|_|__\\` ];
+            characterFrames.frog = [ `   @..@\n  (----)\n ( >__< )\n ^^ ~~ ^^`, `  @..@\n (----)\n( o__< )\n^^-~~ ^^`, `   @..@\n  (----)\n ( O__O )\n ^^ ~~ ^^`, `  @..@\n (----)\n( >__o )\n^^ ~~-^^`, `   @..@\n  (----)\n ( >__< )\n ^^ ~~ ^^`, `    @..@\n   (----)\n  ( o__< )\n ^^ ~~-^^`, `   @..@\n  (----)\n ( O__O )\n ^^ ~~ ^^`, `    @..@\n   (----)\n  ( >__o )\n ^^-~~ ^^` ];
+            characterFrames.mushroom = [ `      .--.\n     /    \\\n    | O  O |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`, `      .--.\n     /    \\\n    | o  o |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'`, `      .--.\n     /    \\\n    | O  O |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `       .--.\n      /    \\\n     | o  O |\n     \\ ---- /\n      \`----'\n       |__|\n      /    \\\n     \`------'`, `      .--.\n     /    \\\n    | o  o |\n    \\ ---- /\n     \`----'\n      |__|\n     /    \\\n    \`------'`, `     .--.\n    /    \\\n   | O  o |\n   \\ ---- /\n    \`----'\n     |__|\n    /    \\\n   \`------'` ];
+
+            const essentialElementsExist = mainContent && startButton && creditText && animationArea && audioPlayer && statusDisplayEl && charactersContainer && turtleEl && frogEl && mushroomEl && backgroundContainer && notesContainer && characterDivs.length === 3;
+
+            if (!essentialElementsExist) {
+                 updateStatus("Initialization failed: Page structure incomplete.", true);
+                 console.error("One or more essential elements are missing from the page. Check element IDs.");
+                 if(startButton) startButton.disabled = true;
+                 return;
+            }
+            updateStatus("Ready. Click 'Start Dancing Trio'.");
+            console.log("App initialized. Click 'Start Dancing Trio' to begin.");
+        });
 
     </script>
-
-    </body>
+</body>
 </html>
